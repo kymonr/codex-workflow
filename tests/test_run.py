@@ -57,11 +57,11 @@ class RunTests(unittest.TestCase):
             self.assertEqual(len(copied), 1)
             self.assertTrue((result.run_dir / "agents").is_dir())
 
-    def test_isolation_opt_is_rejected(self) -> None:
+    def test_invalid_isolation_opt_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             script = Path(tmp) / "iso.js"
             script.write_text(
-                'await agent("x", { isolation: "worktree" });\n',
+                'await agent("x", { isolation: "main" });\n',
                 encoding="utf-8",
             )
             with self.assertRaises(SandboxError) as raised:
@@ -74,7 +74,7 @@ class RunTests(unittest.TestCase):
                         codex_bin="codex",
                     )
                 )
-            self.assertIn("isolation/worktree is not available in PR1", str(raised.exception))
+            self.assertIn("isolation must be", str(raised.exception))
 
     def test_unknown_opt_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

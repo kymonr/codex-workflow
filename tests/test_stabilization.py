@@ -25,7 +25,8 @@ class StabilizationTests(unittest.TestCase):
             """
             const hidden = [
               "__pending", "__deliver", "__done", "__error",
-              "__agent_start", "__log"
+              "__agent_start", "__workflow_start", "__log", "__phase_set",
+              "__workflow_args_json", "__budget_total_json"
             ];
             for (const name of hidden) {
               if (typeof globalThis[name] !== "undefined") {

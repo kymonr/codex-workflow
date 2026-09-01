@@ -50,6 +50,16 @@ class SandboxTests(unittest.TestCase):
             _run('require("fs");')
         self.assertRegex(str(raised.exception), r"require is not defined|not defined")
 
+    def test_process_is_not_defined(self) -> None:
+        with self.assertRaises(SandboxError) as raised:
+            _run("process.cwd();")
+        self.assertRegex(str(raised.exception), r"process is not defined|not defined")
+
+    def test_fs_is_not_defined(self) -> None:
+        with self.assertRaises(SandboxError) as raised:
+            _run('fs.readFileSync("missing");')
+        self.assertRegex(str(raised.exception), r"fs is not defined|not defined")
+
     def test_export_const_meta_is_rewritten(self) -> None:
         _run('export const meta = { name: "t", description: "d" };')
 
@@ -72,15 +82,10 @@ class SandboxTests(unittest.TestCase):
             _run("await parallel([function () { return 1; }, 2]);")
         self.assertIn("functions", str(raised.exception))
 
-    def test_workflow_and_phase_stay_unavailable_in_pr2(self) -> None:
-        for source, name in [
-            ('workflow({ scriptPath: "child.js" });', "workflow()"),
-            ('phase("scan");', "phase()"),
-        ]:
-            with self.subTest(name=name):
-                with self.assertRaises(SandboxError) as raised:
-                    _run(source)
-                self.assertIn("not available in PR2", str(raised.exception))
+    def test_workflow_requires_a_host_loader(self) -> None:
+        with self.assertRaises(SandboxError) as raised:
+            _run('await workflow({ scriptPath: "child.js" });')
+        self.assertIn("not available", str(raised.exception))
 
     def test_agent_returns_parsed_json(self) -> None:
         seen = {}

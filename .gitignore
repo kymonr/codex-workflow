@@ -8,3 +8,11 @@ runs/
 *.log
 .DS_Store
 Thumbs.db
+
+build/
+dist/
+*.egg-info/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/

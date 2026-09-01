@@ -47,7 +47,10 @@ class CliTests(unittest.TestCase):
 
         stdout = io.StringIO()
         with (
-            patch("workflow.cli.run_workflow", return_value=result),
+            patch(
+                "workflow.cli.supervise_workflow",
+                return_value=result,
+            ) as run,
             patch("workflow.cli.read_events", return_value=events),
             redirect_stdout(stdout),
         ):
@@ -60,6 +63,11 @@ class CliTests(unittest.TestCase):
             output.index('agent third: "third"'),
         )
         self.assertNotIn("failed", output)
+        run.assert_called_once()
+        self.assertEqual(
+            run.call_args.kwargs["timeout_seconds"],
+            3600.0,
+        )
 
 
 if __name__ == "__main__":

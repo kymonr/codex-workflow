@@ -5,9 +5,26 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "codex-workflow"
 version = "0.0.1"
-description = "JavaScript Dynamic Workflow host for Codex"
+description = "Capability-restricted JavaScript Dynamic Workflow host for Codex"
+readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.12"
 dependencies = ["quickjs==1.19.4"]
+keywords = ["codex", "workflow", "quickjs", "automation"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Build Tools",
+]
+
+[project.scripts]
+codex-workflow = "workflow.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kymonr/codex-workflow"
+Repository = "https://github.com/kymonr/codex-workflow"
+Issues = "https://github.com/kymonr/codex-workflow/issues"
 
 [tool.setuptools.packages.find]
 include = ["workflow*"]
