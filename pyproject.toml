@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codex-workflow"
+version = "0.0.1"
+description = "JavaScript Dynamic Workflow host for Codex"
+requires-python = ">=3.12"
+dependencies = ["quickjs==1.19.4"]
+
+[tool.setuptools.packages.find]
+include = ["workflow*"]
