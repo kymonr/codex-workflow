@@ -9,10 +9,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from workflow.argv import DEFAULT_EFFORT, build_codex_argv
+from workflow.argv import ALLOWED_EFFORTS, DEFAULT_EFFORT, build_codex_argv
 from workflow.errors import AgentError, ArgvError
 from workflow.executor import CodexExecutor, MockExecutor
-from workflow.journal import Journal
+from workflow.journal import JOURNAL_VERSION, Journal
 from workflow.sandbox import run_script
 from workflow.schema import validate_schema
 
@@ -48,6 +48,19 @@ class RunResult:
     mock: bool
 
 
+@dataclass(frozen=True)
+class PreparedAgentCall:
+    index: int
+    prompt: str
+    requested_opts: dict[str, Any]
+    label: str
+    schema: dict[str, Any] | None
+    model: str | None
+    effort: str
+    slot: Path
+    argv: tuple[str, ...]
+
+
 def resolve_codex_bin(*, mock: bool, explicit: str | None = None) -> str:
     if explicit:
         return explicit
@@ -68,19 +81,6 @@ def run_workflow(config: RunConfig) -> RunResult:
     if not workdir.is_dir():
         raise AgentError(f"工作目录不存在: {workdir}")
 
-    run_dir = _make_run_dir(config.runs_root, script_path)
-    copy_path = run_dir / f"script{script_path.suffix or '.js'}"
-    copy_path.write_text(source, encoding="utf-8")
-    journal = Journal(run_dir / "journal.jsonl")
-    journal.append(
-        {
-            "event": "run.started",
-            "script": str(script_path),
-            "workdir": str(workdir),
-            "mock": config.mock,
-        }
-    )
-
     mock_payload = config.mock_payload
     if mock_payload is None:
         mock_payload = {"name": "codex-workflow"}
@@ -94,65 +94,136 @@ def run_workflow(config: RunConfig) -> RunResult:
         else CodexExecutor()
     )
     codex_bin = resolve_codex_bin(mock=config.mock, explicit=config.codex_bin)
+
+    run_dir = _make_run_dir(config.runs_root, script_path)
+    copy_path = run_dir / f"script{script_path.suffix or '.js'}"
+    copy_path.write_text(source, encoding="utf-8")
+    journal = Journal(run_dir / "journal.jsonl", truncate=True)
+    journal.append(
+        {
+            "event": "run.started",
+            "journal_version": JOURNAL_VERSION,
+            "script": str(script_path),
+            "workdir": str(workdir),
+            "mock": config.mock,
+        }
+    )
+
     agent_index = 0
     agent_index_lock = threading.Lock()
 
-    def on_agent(prompt: str, opts: dict[str, Any]) -> Any:
+    def prepare_agent(prompt: str, opts: dict[str, Any]) -> PreparedAgentCall:
         nonlocal agent_index
-        parsed = parse_agent_opts(opts)
+
         with agent_index_lock:
             index = agent_index
             agent_index += 1
 
-        label = parsed["label"] or f"agent-{index:03d}"
-        slot = run_dir / "agents" / f"{index:03d}-{_safe_label(label)}"
-        slot.mkdir(parents=True, exist_ok=False)
-        schema = parsed["schema"]
-        schema_path = None
-        if schema is not None:
-            schema_path = slot / "schema.json"
-            schema_path.write_text(
-                json.dumps(schema, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
-        last_path = slot / "last.txt"
-        argv = build_codex_argv(
-            prompt=prompt,
-            workdir=workdir,
-            last_message_path=last_path,
-            schema_path=schema_path,
-            effort=parsed["effort"] or config.effort,
-            model=parsed["model"] or config.model,
-            codex_bin=codex_bin,
-        )
-        (slot / "argv.json").write_text(
-            json.dumps(argv, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        requested_opts = dict(opts)
         record: dict[str, Any] = {
             "event": "agent",
             "index": index,
-            "label": label,
             "prompt": prompt,
-            "opts": {
+            "requested_opts": requested_opts,
+        }
+        stage = "options"
+        try:
+            parsed = parse_agent_opts(requested_opts)
+            label = parsed["label"] or f"agent-{index:03d}"
+            model = config.model if parsed["model"] is None else parsed["model"]
+            effort = config.effort if parsed["effort"] is None else parsed["effort"]
+            schema = parsed["schema"]
+            record["label"] = label
+            record["opts"] = {
                 "label": parsed["label"],
                 "schema": schema,
-                "model": parsed["model"] or config.model,
-                "effort": parsed["effort"] or config.effort,
-            },
-            "argv": argv,
-        }
-        try:
-            value = executor.run(
-                argv=argv,
-                slot=slot,
-                schema=schema,
+                "model": model,
+                "effort": effort,
+            }
+
+            stage = "slot"
+            slot = run_dir / "agents" / f"{index:03d}-{_safe_label(label)}"
+            slot.mkdir(parents=True, exist_ok=False)
+
+            schema_path = None
+            if schema is not None:
+                stage = "schema"
+                schema_path = slot / "schema.json"
+                schema_path.write_text(
+                    json.dumps(
+                        schema,
+                        ensure_ascii=False,
+                        indent=2,
+                        allow_nan=False,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+            stage = "argv"
+            last_path = slot / "last.txt"
+            argv = build_codex_argv(
                 prompt=prompt,
-                opts=opts,
+                workdir=workdir,
+                last_message_path=last_path,
+                schema_path=schema_path,
+                effort=effort,
+                model=model,
+                codex_bin=codex_bin,
+            )
+            record["argv"] = argv
+
+            stage = "artifacts"
+            (slot / "argv.json").write_text(
+                json.dumps(argv, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
             )
         except Exception as exc:
             record["ok"] = False
-            record["error"] = str(exc)
+            record["stage"] = stage
+            record["error"] = _error_text(exc)
+            journal.append(record)
+            raise
+
+        return PreparedAgentCall(
+            index=index,
+            prompt=prompt,
+            requested_opts=requested_opts,
+            label=label,
+            schema=schema,
+            model=model,
+            effort=effort,
+            slot=slot,
+            argv=tuple(argv),
+        )
+
+    def execute_agent(call: PreparedAgentCall) -> Any:
+        record: dict[str, Any] = {
+            "event": "agent",
+            "index": call.index,
+            "label": call.label,
+            "prompt": call.prompt,
+            "requested_opts": call.requested_opts,
+            "opts": {
+                "label": call.requested_opts.get("label"),
+                "schema": call.schema,
+                "model": call.model,
+                "effort": call.effort,
+            },
+            "argv": list(call.argv),
+        }
+        try:
+            value = executor.run(
+                argv=list(call.argv),
+                slot=call.slot,
+                schema=call.schema,
+                prompt=call.prompt,
+                opts=call.requested_opts,
+            )
+        except Exception as exc:
+            record["ok"] = False
+            record["stage"] = "executor"
+            record["error"] = _error_text(exc)
             journal.append(record)
             raise
         record["ok"] = True
@@ -165,9 +236,21 @@ def run_workflow(config: RunConfig) -> RunResult:
         journal.append({"event": "log", "message": message})
 
     try:
-        run_script(source, on_agent=on_agent, on_log=on_log)
+        run_script(
+            source,
+            prepare_agent=prepare_agent,
+            execute_agent=execute_agent,
+            on_log=on_log,
+        )
     except Exception as exc:
-        journal.append({"event": "run.finished", "ok": False, "error": str(exc)})
+        journal.append(
+            {
+                "event": "run.finished",
+                "ok": False,
+                "agents": agent_index,
+                "error": _error_text(exc),
+            }
+        )
         raise
 
     journal.append({"event": "run.finished", "ok": True, "agents": agent_index})
@@ -196,18 +279,25 @@ def parse_agent_opts(opts: dict[str, Any] | None) -> dict[str, Any]:
     if schema is not None:
         if not isinstance(schema, dict):
             raise AgentError("agent() schema must be an object")
-        dumped = json.dumps(schema, ensure_ascii=False)
+        try:
+            dumped = json.dumps(schema, ensure_ascii=False, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise AgentError("agent() schema must be valid JSON") from exc
         if len(dumped) > _MAX_SCHEMA_CHARS:
-            raise AgentError("agent() schema exceeds PR1 size limit")
+            raise AgentError("agent() schema exceeds PR2 size limit")
         validate_schema(schema)
 
     model = opts.get("model")
-    if model is not None and not isinstance(model, str):
-        raise AgentError("agent() model must be a string")
+    if model is not None:
+        if not isinstance(model, str) or not model:
+            raise AgentError("agent() model must be a non-empty string")
 
     effort = opts.get("effort")
-    if effort is not None and not isinstance(effort, str):
-        raise AgentError("agent() effort must be a string")
+    if effort is not None:
+        if not isinstance(effort, str) or effort not in ALLOWED_EFFORTS:
+            raise AgentError(
+                "agent() effort must be low, medium, high, or xhigh"
+            )
 
     return {
         "label": label,
@@ -221,13 +311,18 @@ def _make_run_dir(runs_root: Path, script_path: Path) -> Path:
     runs_root = runs_root.expanduser().resolve()
     runs_root.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", script_path.stem)[:40] or "run"
-    path = runs_root / f"{stamp}-{slug}"
-    suffix = 2
-    while path.exists():
-        path = runs_root / f"{stamp}-{slug}-{suffix}"
-        suffix += 1
-    path.mkdir(parents=False)
+    slug = re.sub(r"^[A-Za-z0-9._-]+", "-", script_path.stem)[:40] or "run"
+    base_name = f"{stamp}-{slug}"
+    suffix = 1
+    while True:
+        name = base_name if suffix == 1 else f"{base_name}-{suffix}"
+        path = runs_root / name
+        try:
+            path.mkdir(parents=False)
+        except FileExistsError:
+            suffix += 1
+            continue
+        break
     (path / "agents").mkdir()
     return path
 
@@ -235,3 +330,8 @@ def _make_run_dir(runs_root: Path, script_path: Path) -> Path:
 def _safe_label(label: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip("-")
     return (cleaned or "agent")[:80]
+
+
+def _error_text(exc: BaseException) -> str:
+    text = str(exc)
+    return text if text else exc.__class__.__name__

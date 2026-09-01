@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 from workflow.argv import FORBIDDEN_SUBSTRINGS
 from workflow.errors import SandboxError
-from workflow.journal import read_events
+from workflow.journal import JOURNAL_VERSION, read_events
 from workflow.run import RunConfig, run_workflow
 
 
@@ -32,6 +32,7 @@ class RunTests(unittest.TestCase):
             events = read_events(result.journal_path)
             kinds = [event["event"] for event in events]
             self.assertEqual(kinds[0], "run.started")
+            self.assertEqual(events[0]["journal_version"], JOURNAL_VERSION)
             self.assertEqual(kinds[-1], "run.finished")
             self.assertTrue(events[-1]["ok"])
             agents = [event for event in events if event["event"] == "agent"]

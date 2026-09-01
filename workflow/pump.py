@@ -19,6 +19,7 @@ from quickjs import Context
 from workflow.errors import SandboxError
 
 DEFAULT_MAX_AGENTS = 1000
+_MAX_AGENT_PAYLOAD_CHARS = 128_000
 _MAX_JS_JOBS = 1_000_000
 _JS_JOB_BATCH = 10_000
 _WAIT_SECONDS = 0.05
@@ -27,8 +28,7 @@ _WAIT_SECONDS = 0.05
 @dataclass(frozen=True)
 class _AgentJob:
     job_id: str
-    prompt: str
-    opts: dict[str, Any]
+    prepared: Any
 
 
 def default_max_concurrency() -> int:
@@ -36,15 +36,17 @@ def default_max_concurrency() -> int:
 
 
 def run_job_pump(
-    wrapped_source: str,
+    user_function_source: str,
     *,
-    on_agent: Callable[[str, dict[str, Any]], Any],
+    runtime_source: str,
+    prepare_agent: Callable[[str, dict[str, Any]], Any],
+    execute_agent: Callable[[Any], Any],
     on_log: Callable[[str], None] | None,
     memory_limit_bytes: int,
     max_concurrency: int | None = None,
     max_agents: int = DEFAULT_MAX_AGENTS,
 ) -> None:
-    """Evaluate *wrapped_source* and pump promises until the script settles."""
+    """Evaluate a user function and pump promises until the script settles."""
 
     concurrency = default_max_concurrency() if max_concurrency is None else max_concurrency
     if isinstance(concurrency, bool) or not isinstance(concurrency, int) or concurrency < 1:
@@ -75,6 +77,10 @@ def run_job_pump(
         job_id = f"job-{next_job_number:06d}"
         next_job_number += 1
         try:
+            if not isinstance(payload_json, str):
+                raise SandboxError("agent() host payload must be JSON text")
+            if len(payload_json) > _MAX_AGENT_PAYLOAD_CHARS:
+                raise SandboxError("agent() host payload is too large")
             payload = json.loads(payload_json)
             if not isinstance(payload, dict):
                 raise SandboxError("agent() host payload must be an object")
@@ -92,8 +98,10 @@ def run_job_pump(
                     )
                 )
                 return job_id
+
+            prepared = prepare_agent(prompt, opts)
             accepted_agents += 1
-            pending_starts.append(_AgentJob(job_id, prompt, opts))
+            pending_starts.append(_AgentJob(job_id, prepared))
         except Exception as exc:
             done_q.put((job_id, _error_envelope(_error_text(exc))))
         return job_id
@@ -118,7 +126,7 @@ def run_job_pump(
         started = 0
         while pending_starts and len(inflight) < concurrency:
             job = pending_starts.popleft()
-            future = pool.submit(on_agent, job.prompt, job.opts)
+            future = pool.submit(execute_agent, job.prepared)
             inflight[job.job_id] = future
             future.add_done_callback(
                 lambda finished, job_id=job.job_id: capture_completion(job_id, finished)
@@ -128,15 +136,8 @@ def run_job_pump(
 
     def deliver(job_id: str, packed_json: str) -> None:
         inflight.pop(job_id, None)
-        expression = (
-            "__deliver("
-            + json.dumps(job_id)
-            + ","
-            + json.dumps(packed_json)
-            + ");"
-        )
         try:
-            ctx.eval(expression)
+            runtime("deliver", job_id, packed_json)
         except Exception as exc:
             raise SandboxError(f"agent delivery failed: {exc}") from exc
 
@@ -150,22 +151,57 @@ def run_job_pump(
             deliver(job_id, packed)
             delivered += 1
 
+    def read_state() -> tuple[bool, str | None]:
+        try:
+            raw = runtime("state")
+            state = json.loads(raw)
+        except Exception as exc:
+            raise SandboxError(f"sandbox state unreadable: {exc}") from exc
+        if (
+            not isinstance(state, dict)
+            or not isinstance(state.get("done"), bool)
+            or state.get("error") is not None
+            and not isinstance(state.get("error"), str)
+        ):
+            raise SandboxError("sandbox state unreadable: invalid state envelope")
+        return state["done"], state.get("error")
+
     ctx.add_callable("__agent_start", host_start)
     ctx.add_callable("__log", host_log)
+
+    try:
+        runtime = ctx.eval(runtime_source)
+    except Exception as exc:
+        raise SandboxError(f"sandbox bootstrap failed: {exc}") from exc
+    if not callable(runtime):
+        raise SandboxError("sandbox bootstrap did not return a runtime")
+
+    try:
+        user_main = ctx.eval(user_function_source)
+    except Exception as exc:
+        raise SandboxError(f"script eval failed: {exc}") from exc
+    if not callable(user_main):
+        raise SandboxError("script eval failed: user program is not callable")
+
+    try:
+        runtime("start", user_main)
+    except Exception as exc:
+        raise SandboxError(f"script start failed: {exc}") from exc
 
     pool = ThreadPoolExecutor(
         max_workers=concurrency,
         thread_name_prefix="codex-workflow-agent",
     )
     try:
-        try:
-            ctx.eval(wrapped_source)
-        except Exception as exc:
-            raise SandboxError(f"script eval failed: {exc}") from exc
-
         while True:
             ran_jobs = 0
-            while ran_jobs < _JS_JOB_BATCH and ctx.execute_pending_job():
+            while ran_jobs < _JS_JOB_BATCH:
+                try:
+                    ran = ctx.execute_pending_job()
+                except Exception as exc:
+                    raise SandboxError(f"pending job failed: {exc}") from exc
+                if not ran:
+                    break
                 ran_jobs += 1
                 total_js_jobs += 1
                 if total_js_jobs > _MAX_JS_JOBS:
@@ -173,15 +209,10 @@ def run_job_pump(
 
             started = start_upto_cap()
             delivered = deliver_ready()
-
-            try:
-                done = bool(ctx.eval("__done"))
-                error = ctx.eval("__error")
-            except Exception as exc:
-                raise SandboxError(f"sandbox state unreadable: {exc}") from exc
+            done, error = read_state()
 
             if error:
-                raise SandboxError(str(error))
+                raise SandboxError(error)
             if (
                 done
                 and not pending_starts
@@ -191,14 +222,14 @@ def run_job_pump(
                 break
             if ran_jobs or started or delivered:
                 continue
-            if pending_starts:
-                continue
             if inflight:
                 try:
                     job_id, packed = done_q.get(timeout=_WAIT_SECONDS)
                 except queue.Empty:
                     continue
                 deliver(job_id, packed)
+                continue
+            if pending_starts:
                 continue
             if not done:
                 raise SandboxError("script stalled with no in-flight agents")

@@ -140,6 +140,8 @@ def validate_codex_argv(argv: list[str]) -> None:
         raise ArgvError("prompt must not start with -")
     if not prompt.strip():
         raise ArgvError("prompt must be non-empty")
+    if len(prompt) > _MAX_PROMPT_CHARS:
+        raise ArgvError("agent() prompt exceeds PR2 size limit")
 
     if seen.get("-s") != "read-only":
         raise ArgvError("PR1 argv must contain -s read-only")

@@ -78,7 +78,14 @@ def main(argv: list[str] | None = None) -> int:
     if result.mock:
         print("模式: mock（没有启动真实 codex exec）")
     events = read_events(result.journal_path)
-    agents = [event for event in events if event.get("event") == "agent" and event.get("ok")]
+    agents = sorted(
+        (
+            event
+            for event in events
+            if event.get("event") == "agent" and event.get("ok")
+        ),
+        key=lambda event: event.get("index", 0),
+    )
     for event in agents:
         returned = json.dumps(event.get("return"), ensure_ascii=False)
         print(f"agent {event.get('label')}: {returned}")
