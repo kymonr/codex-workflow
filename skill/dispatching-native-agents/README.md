@@ -1,6 +1,6 @@
 # dispatching-native-agents
 
-给 **Codex 桌面会话**使用的原生子代理派工与深度审核说明书。子代理必须使用原生 `spawn_agent`：短小、机械、只读且容易复核的分支优先 Spark；Luna 负责事实覆盖；Sol 负责判断门卫、设计选择、默认写入和难以逆转的工作，但保持稀缺；用户明确指定其他 model/effort 时使用 Custom（`agent_type=default`）。不是 `codex exec`、`python -m workflow`、CLI 或任何 JavaScript host。
+给 **Codex 桌面会话**使用的原生子代理派工与深度审核说明书。子代理必须使用原生 `spawn_agent`：短小、机械、只读且容易复核的分支优先 Spark；Luna 负责事实覆盖；Sol 负责判断门卫、设计选择、默认写入和难以逆转的工作，判断、设计评分和深审门卫可以并行，但不承担搜索覆盖；用户明确指定其他 model/effort 时使用 Custom（`agent_type=default`）。不是 `codex exec`、`python -m workflow`、CLI 或任何 JavaScript host。
 
 完整派工、Sol gate、生命周期和写入边界见 [SKILL.md](SKILL.md)；多波次模式见 [references/patterns.md](references/patterns.md)。
 
