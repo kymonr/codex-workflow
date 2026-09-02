@@ -6,9 +6,10 @@
 
 ## Routing summary
 
-- 通常按独立 evidence lens 派 2–8 个覆盖代理；更多有效 lens 分 wave，不为旧 `Agent Fleet 4/6/8` 凑人数。
+- 通常按独立 evidence lens 派 2–8 个覆盖代理；该范围只计算 Spark/Luna 查找和 completeness critic，对抗反驳另算。命中深审、判断或高风险触发时，每条结论使用 2–3 个 item-local 反驳人。任何反驳人失败或未返回时，先标记 `contested`；否则，有效票少于 2 或平票也标记 `contested`，只有指向包内证据的多数 `unsupported` 才能否决。`uncertain` 不计票。全部结论被否决时列为 `REJECT`，不算 `completed-empty`。
 - 深度审核、全面审核、对抗审核、多代理审核、仓库深审和旧 Agent Fleet 说法都进入自适应深审。
-- Root 合并后使用稳定 `C-###`；每次合并后都复核候选身份（包括纯事实和 `completed-empty`），有 refute 或 Sol gate 时在派工前完成，最终作答前再复核一次。
+- Root 先核引用，再在 item-local 反驳前复核候选身份；覆盖停波且反驳结束后再次复核并分配稳定 `C-###`，每个 Sol 门卫前和最终作答前再复核。纯事实和 `completed-empty` 路径也执行适用的复核。
+- 去重后，互相独立的判断性结论可以并行进入各自的 Sol 门卫；Sol 也可并行承担设计提案、设计评分和深审反驳，但不承担搜索覆盖。设计使用 2–3 个 Sol 提案、2–3 个新 Sol 评分和 Root 底座嫁接，禁止投票；平分只增加一个 Sol 断平局。
 - 实现任务默认一个 writer；只有当前请求明确要求并行写、存在两个以上互斥 writer 且适用工作区已有合同，才按该合同创建隔离 worktree，不重复询问创建权限。`D:\codex` 的合同是 `D:\codex\docs\agent-workflows\worktree-parallel-dispatch.md`。
 - Managed Workflow、Worktree Writer v2、固定人数表、强制复现阶段和完整失败状态机不迁移。
 
