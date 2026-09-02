@@ -88,7 +88,7 @@ Use only for a genuine choice when the user has not already selected a design. S
 
 ## Segment switch
 
-When those segments exist: Understand (lenses) → Design (Sol) → Implement (one writer by default) → Review (fresh coverage agents, optional Sol gate). New children each segment. Do not reuse a finder as the writer or as the reviewer of its own work. Review starts only after all writers are idle. When 2+ independent writers must run concurrently, use the applicable workspace worktree contract; under `D:\codex`, the single source of truth is `D:\codex\docs\agent-workflows\worktree-parallel-dispatch.md`. If no applicable contract exists, use one writer.
+When those segments exist: Understand (lenses) → Design (Sol) → Implement (one writer by default) → Review (fresh coverage agents, optional Sol gate). New children each segment. Do not reuse a finder as the writer or as the reviewer of its own work. Review starts only after all writers are idle. Only when the current request explicitly asks for parallel writing and 2+ independent writers must run concurrently, use the applicable workspace worktree contract; under `D:\codex`, the single source of truth is `D:\codex\docs\agent-workflows\worktree-parallel-dispatch.md`. If no applicable contract exists, use one writer.
 
 ## Escalate forward only
 

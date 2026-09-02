@@ -32,7 +32,7 @@ Pick **1–2** per segment. These are Claude-style shapes, not exclusive product
 | Loop | loop-until-dry | unknown how many findings | new lens each wave; 2 consecutive dry waves finish |
 | Segments | sequential workflows | understand → design → write → review | new children each segment; writer idle before review |
 | Panel | judge panel | choose among designs | 2–3 Sol independently propose from named angles; after all are idle, Root grafts, then an optional serial Sol reviews the synthesis |
-| Write | writer segment | user asked to implement | one writer by default; when 2+ independent writers must run together and the workspace has an applicable worktree contract, route each through an isolated worktree |
+| Write | writer segment | user asked to implement | one writer by default; only when the user explicitly requests parallel implementation and 2+ independent writers must run together, use the applicable worktree contract to isolate each writer |
 
 There is no nested `workflow()`. Children must not spawn. Root simulates control flow; `wait_agent` is an event wake, not a join-all.
 
@@ -54,7 +54,7 @@ See [references/patterns.md](references/patterns.md) for the detailed recipe.
 
 Default coverage is still Luna, and Sol is still scarce. The lock is gone: pick the route **per branch**. The user's explicit route, model, and effort win when mutually compatible. If the user names a fixed Luna/Sol/Spark route with incompatible model/effort, stop and ask which selection to preserve; never silently change the route or discard an override.
 
-Spawn with `fork_turns=none`. With no user override, use the selected route's `agent_type` and do not also pass model/effort — the role file is the contract. A Root-decided route upgrade changes only `agent_type`; it is not a model/effort override. When the user names model or effort without a fixed route, use Custom (`agent_type=default`) and pass the named values. When both values exactly match a fixed role's configured model and reasoning effort, use that `agent_type` and omit model/effort. Do not pass model/effort alongside a fixed Luna, Sol, or Spark role. Resolve declared model and reasoning effort from the current `spawn_agent` contract; report any role-file tier as configured, not runtime-proven. These declarations are not runtime receipts. Put every needed fact in the child prompt.
+Spawn with `fork_turns=none`. With no user override, use the selected route's `agent_type` and do not also pass model/effort — the role file is the contract. A Root-decided route upgrade changes only `agent_type`; it is not a model/effort override. When the user names model or effort without a fixed route, use Custom (`agent_type=default`) and pass the named values. When both values exactly match a fixed role's configured model and reasoning effort, use that `agent_type` and omit model/effort. Do not pass model/effort alongside a fixed Luna, Sol, or Spark role. Resolve declared model and reasoning effort from the current `spawn_agent` contract. Put every needed fact in the child prompt.
 
 ### Child return shape
 
@@ -74,7 +74,7 @@ A pointer without a bounded payload is `UNVERIFIED`. Root builds merge packets, 
 Before every `spawn_agent`:
 
 ```text
-Subagent: <branch> -> <route> (agent_type=<luna|sol|spark|default>, model=<declared>, effort=<declared>, tier=<value|UNKNOWN> [configured], override=<none|user>, runtime=UNKNOWN, fork=none)
+Subagent: <branch> -> <route> (<model>/<effort>, <configured|user>)
 ```
 
 ## Caps
@@ -143,7 +143,7 @@ Treat `Agent Fleet`, `Agent Fleet 4/6/8`, and equivalent old review language as 
 - Finalizing with an unaccounted material branch
 - Treating headcount as confidence
 - Sol panel on fact-finding
-- Parallel writers without disjoint `owned_targets` and an applicable worktree contract
+- Parallel writers without an explicit user request, disjoint `owned_targets`, and an applicable worktree contract
 - Treating a worktree as a hard child cwd sandbox instead of verifying its candidate patch
 - Sending a judgment/safety branch to Luna only because it looks like search
 - Relabeling a Custom override as Luna or Sol

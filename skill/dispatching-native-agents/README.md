@@ -8,8 +8,8 @@
 
 - 通常按独立 evidence lens 派 2–8 个覆盖代理；更多有效 lens 分 wave，不为旧 `Agent Fleet 4/6/8` 凑人数。
 - 深度审核、全面审核、对抗审核、多代理审核、仓库深审和旧 Agent Fleet 说法都进入自适应深审。
-- Root 合并后使用稳定 `C-###`，并在 refute 或 Sol gate 前复核候选身份。
-- 已授权的实现任务存在两个以上互斥 writer 时，按适用工作区的现有 worktree 合同直接路由，不重复申请。`D:\codex` 的合同是 `D:\codex\docs\agent-workflows\worktree-parallel-dispatch.md`。
+- Root 合并后使用稳定 `C-###`；每次合并后都复核候选身份（包括纯事实和 `completed-empty`），有 refute 或 Sol gate 时在派工前完成，最终作答前再复核一次。
+- 实现任务默认一个 writer；只有当前请求明确要求并行写、存在两个以上互斥 writer 且适用工作区已有合同，才按该合同创建隔离 worktree，不重复询问创建权限。`D:\codex` 的合同是 `D:\codex\docs\agent-workflows\worktree-parallel-dispatch.md`。
 - Managed Workflow、Worktree Writer v2、固定人数表、强制复现阶段和完整失败状态机不迁移。
 
 ## Source and installation
