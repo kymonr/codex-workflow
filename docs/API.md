@@ -73,6 +73,7 @@ error containing `nested workflow`. A successful child resolves to `null`.
 ## CLI
 
 ```text
+codex-workflow --version
 codex-workflow run <script>
   [--mock]
   [--runs-root <path>]

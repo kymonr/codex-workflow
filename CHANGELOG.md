@@ -44,6 +44,10 @@ pre-alpha and has not published a compatibility-stable release.
 - Existing journals are no longer truncated merely by constructing a reader.
 - Run directory allocation is atomic under concurrent starts.
 - Top-level workflow failure cancels other in-flight agents.
+- Non-finite mock delays and agent timeouts are rejected.
+- Run-level model and effort values are validated before artifacts exist.
+- The 80-character phase limit now counts Unicode characters consistently.
+- The CLI exposes the installed package version with `--version`.
 
 ## Initial implementation
 

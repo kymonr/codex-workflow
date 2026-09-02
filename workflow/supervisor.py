@@ -39,7 +39,7 @@ def supervise_workflow(
 ) -> RunResult:
     """Run one workflow in a killable child process."""
 
-    _validate_timeout(timeout_seconds)
+    timeout_seconds = _validate_timeout(timeout_seconds)
     try:
         pickle.dumps(config)
     except Exception as exc:
@@ -161,14 +161,18 @@ def _child_entry(config: RunConfig, sender: Connection) -> None:
         sender.close()
 
 
-def _validate_timeout(value: float) -> None:
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not math.isfinite(value)
-        or value <= 0
-    ):
+def _validate_timeout(value: object) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise SupervisorError("timeout_seconds must be a positive finite number")
+    try:
+        timeout = float(value)
+    except (OverflowError, ValueError) as exc:
+        raise SupervisorError(
+            "timeout_seconds must be a positive finite number"
+        ) from exc
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise SupervisorError("timeout_seconds must be a positive finite number")
+    return timeout
 
 
 def _stop_process_tree(process: multiprocessing.Process) -> None:

@@ -81,6 +81,7 @@ await workflow(
 ## CLI
 
 ```text
+codex-workflow --version
 codex-workflow run <script>
   [--mock]
   [--runs-root <path>]

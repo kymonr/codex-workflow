@@ -6,6 +6,7 @@ import math
 import sys
 from pathlib import Path
 
+from workflow import __version__
 from workflow.argv import ALLOWED_EFFORTS, DEFAULT_EFFORT
 from workflow.errors import AgentError, WorkflowError
 from workflow.journal import read_events
@@ -81,6 +82,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="codex-workflow",
         description="在隔离 JS 沙箱里跑工作流脚本；每个 agent() 变成一次 codex exec。",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     sub = parser.add_subparsers(dest="command", required=True)
     run_p = sub.add_parser("run", help="执行一份 JavaScript 工作流")

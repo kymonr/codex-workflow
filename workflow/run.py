@@ -9,7 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from workflow.argv import ALLOWED_EFFORTS, DEFAULT_EFFORT, build_codex_argv
+from workflow.argv import (
+    ALLOWED_EFFORTS,
+    DEFAULT_EFFORT,
+    build_codex_argv,
+    validate_model_name,
+)
 from workflow.errors import AgentError, ArgvError
 from workflow.executor import CodexExecutor, MockExecutor
 from workflow.journal import JOURNAL_VERSION, Journal
@@ -452,6 +457,18 @@ def run_workflow(config: RunConfig) -> RunResult:
 
 
 def _validate_run_config(config: RunConfig) -> str:
+    if (
+        not isinstance(config.effort, str)
+        or config.effort not in ALLOWED_EFFORTS
+    ):
+        raise AgentError(
+            "effort must be low, medium, high, or xhigh"
+        )
+    if config.model is not None:
+        try:
+            validate_model_name(config.model)
+        except ArgvError as exc:
+            raise AgentError(str(exc)) from exc
     if (
         config.budget_tokens is not None
         and (

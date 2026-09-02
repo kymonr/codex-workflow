@@ -68,17 +68,18 @@ class SupervisorTests(unittest.TestCase):
             root = Path(tmp)
             script = root / "empty.js"
             script.write_text("", encoding="utf-8")
-            with self.assertRaises(SupervisorError):
-                supervise_workflow(
-                    RunConfig(
-                        script_path=script,
-                        runs_root=root / "runs",
-                        workdir=ROOT,
-                        mock=True,
-                        codex_bin="codex",
-                    ),
-                    timeout_seconds=0,
-                )
+            for value in (0, 10**400):
+                with self.subTest(value=value), self.assertRaises(SupervisorError):
+                    supervise_workflow(
+                        RunConfig(
+                            script_path=script,
+                            runs_root=root / "runs",
+                            workdir=ROOT,
+                            mock=True,
+                            codex_bin="codex",
+                        ),
+                        timeout_seconds=value,
+                    )
 
 
 if __name__ == "__main__":

@@ -106,19 +106,18 @@ def validate_codex_argv(
         raise ArgvError("argv tokens must be non-empty strings")
 
     for index, token in enumerate(argv):
-        lower = token.lower()
-        for forbidden in FORBIDDEN_SUBSTRINGS:
-            if forbidden not in lower:
-                continue
-            if (
-                forbidden == "workspace-write"
-                and worktree_authorized
-                and token == "workspace-write"
-                and index > 0
-                and argv[index - 1] == "-s"
-            ):
-                continue
-            raise ArgvError(f"forbidden argv token: {forbidden}")
+        forbidden = _find_forbidden_substring(token)
+        if forbidden is None:
+            continue
+        if (
+            forbidden == "workspace-write"
+            and worktree_authorized
+            and token == "workspace-write"
+            and index > 0
+            and argv[index - 1] == "-s"
+        ):
+            continue
+        raise ArgvError(f"forbidden argv token: {forbidden}")
 
     executable = Path(argv[0]).name.lower()
     if executable not in _CODEX_NAMES:
@@ -216,9 +215,29 @@ def _check_sandbox(
     raise ArgvError("sandbox must be read-only or an authorized workspace-write")
 
 
-def _check_model(model: str) -> None:
-    if not _MODEL_RE.fullmatch(model) or model.startswith("-"):
+def validate_model_name(model: object) -> str:
+    if (
+        not isinstance(model, str)
+        or not _MODEL_RE.fullmatch(model)
+        or model.startswith("-")
+    ):
         raise ArgvError("model name is not allowed")
+    forbidden = _find_forbidden_substring(model)
+    if forbidden is not None:
+        raise ArgvError(f"forbidden model token: {forbidden}")
+    return model
+
+
+def _find_forbidden_substring(token: str) -> str | None:
+    lower = token.lower()
+    return next(
+        (forbidden for forbidden in FORBIDDEN_SUBSTRINGS if forbidden in lower),
+        None,
+    )
+
+
+def _check_model(model: object) -> None:
+    validate_model_name(model)
 
 
 def _absolute_path(path: Path, label: str) -> str:

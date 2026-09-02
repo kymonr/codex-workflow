@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import signal
 import subprocess
@@ -19,6 +20,23 @@ _TERMINATE_GRACE_SECONDS = 2.0
 _ERROR_TAIL_BYTES = 4096
 
 
+def _validated_seconds(
+    value: object,
+    *,
+    allow_zero: bool,
+    message: str,
+) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(message)
+    try:
+        seconds = float(value)
+    except (OverflowError, ValueError) as exc:
+        raise ValueError(message) from exc
+    if not math.isfinite(seconds) or (seconds < 0 if allow_zero else seconds <= 0):
+        raise ValueError(message)
+    return seconds
+
+
 class MockExecutor:
     def __init__(
         self,
@@ -27,15 +45,14 @@ class MockExecutor:
         handler: Callable[[str, dict[str, Any]], Any] | None = None,
         delay_s: float = 0.0,
     ) -> None:
-        if (
-            isinstance(delay_s, bool)
-            or not isinstance(delay_s, (int, float))
-            or delay_s < 0
-        ):
-            raise ValueError("mock delay_s must be a non-negative number")
+        validated_delay = _validated_seconds(
+            delay_s,
+            allow_zero=True,
+            message="mock delay_s must be a finite non-negative number",
+        )
         self.payload = payload
         self.handler = handler
-        self.delay_s = float(delay_s)
+        self.delay_s = validated_delay
         self._cancelled = threading.Event()
 
     def cancel_all(self) -> None:
@@ -77,13 +94,11 @@ class MockExecutor:
 
 class CodexExecutor:
     def __init__(self, timeout_seconds: float = AGENT_TIMEOUT_SECONDS) -> None:
-        if (
-            isinstance(timeout_seconds, bool)
-            or not isinstance(timeout_seconds, (int, float))
-            or timeout_seconds <= 0
-        ):
-            raise ValueError("agent timeout must be a positive number")
-        self.timeout_seconds = float(timeout_seconds)
+        self.timeout_seconds = _validated_seconds(
+            timeout_seconds,
+            allow_zero=False,
+            message="agent timeout must be a positive finite number",
+        )
         self._cancelled = threading.Event()
         self._lock = threading.Lock()
         self._active: set[subprocess.Popen[Any]] = set()

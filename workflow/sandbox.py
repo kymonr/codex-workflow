@@ -333,9 +333,6 @@ RUNTIME_BOOTSTRAP = r"""
     if (typeof title !== "string" || StringTrim(title) === "") {
       throw new ErrorCtor("phase() title must be a non-empty string");
     }
-    if (title.length > 80) {
-      throw new ErrorCtor("phase() title must be at most 80 characters");
-    }
     var packed = JSONParse(hostPhase(title));
     if (!packed.ok) {
       throw new ErrorCtor(StringValue(packed.error || "phase() failed"));
