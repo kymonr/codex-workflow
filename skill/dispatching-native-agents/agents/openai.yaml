@@ -1,0 +1,6 @@
+interface:
+  display_name: "Native Dispatch"
+  short_description: "Native Luna coverage; Sol gates/design/writing; Spark/Custom"
+  default_prompt: "Use $dispatching-native-agents to fan out substantial independent branches with native subagents."
+policy:
+  allow_implicit_invocation: false
