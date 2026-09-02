@@ -8,7 +8,19 @@ Root names scope and independent questions, then fans out. An optional Luna scou
 
 ## Distinct lenses
 
-Count search *methods*, not a desired headcount. Useful splits: by module, by recent diff, by error string, by permission / data / API. Merge only assignments with materially the same evidence objective, scope, question, and method; static analysis and runtime reproduction are distinct.
+Count search *methods*, not a desired headcount. Useful splits: by module, by recent diff, by error string, by permission / data / API. Merge only assignments with materially the same evidence objective, scope, question, and method; static analysis and runtime reproduction are distinct. Usually run 2–8 useful coverage branches and split larger sets into waves. A later wave identified before the current wave closes remains planned until it runs or Root accounts for it as dropped or `UNKNOWN` with a reason. A legacy Fleet number is a depth request, not a quota.
+
+## Scoped candidate identity
+
+Before the first evidence wave, Root records one snapshot identifier and:
+
+- repository identity and `HEAD` for a Git target;
+- the exact in-scope path set and per-path state;
+- a content fingerprint for every dirty or untracked in-scope file.
+
+`as-of` refers to that snapshot, not merely a timestamp. Bind every item-local chain to the snapshot it examined. When a completed writer changes the candidate, record a new snapshot and start a new review segment.
+
+After coverage is terminal and Root has merged claims, recheck the scoped snapshot before any merge-wide refute panel or Sol gate, then recheck it once more immediately before the final answer. In-scope drift makes only affected claims stale or `UNKNOWN`; out-of-scope drift does not invalidate the packet. Do not reinterpret old evidence as proof about new bytes. Non-Git work skips Git fields but still names the source and in-scope identity that can be observed.
 
 ## Pipeline without a join
 
@@ -19,8 +31,8 @@ Each item owns its item-local chain: find (default Luna, or Sol if that question
 1. Spawn independent stage-1 children.
 2. While Root still has local work, do not wait.
 3. When idle, call `wait_agent` once with a 5–10 minute timeout.
-4. Process whichever item updated. If that item's next stage is item-local and non-Sol, dispatch it immediately; siblings continue independently.
-5. After the coverage segment reaches its stop rule, wait for every relevant branch needed by the merge, then merge and dedupe. Only then can 0 surviving claims become `completed-empty`. A non-empty judgment-bearing packet may enter an optional refute panel and one serial Sol gate. Genuinely independent conclusions and design panels are exceptions.
+4. Process whichever item updated. If that item's next stage is item-local and non-Sol, pass the prior return, bound snapshot ID, remaining question, and completed scope that must not be repeated; dispatch it immediately while siblings continue independently.
+5. After the coverage segment reaches its stop rule, wait for every relevant branch needed by the merge, then merge and dedupe. Assign stable `C-###` IDs, recheck scoped candidate identity, and only then let a non-empty judgment-bearing packet enter an optional refute panel and one serial Sol gate. Only a terminal, eligible 0-claim segment becomes `completed-empty`. Genuinely independent conclusions and design panels are exceptions.
 
 Use `list_agents` after a timeout, ambiguous wake, suspected silent completion, or capacity failure; do not call it mechanically after every ordinary result. Do not poll mechanically or treat silence alone as proof that a child is stuck.
 
@@ -37,16 +49,22 @@ Three-module bug hunt (scout → Luna fan-out → first-back first-check → opt
 
 ## Packet refute panel
 
-For a non-empty merge packet involving externally trusted judgment, safety, or hard-to-reverse work, Root may spawn 2–3 Luna in one wave with the same numbered packet and distinct questions: citation support; freshness, snapshot, or missing payload; severity or category. Use `fork_turns=none`, packet payloads only, and no repository rescan. Drop a claim only when cited packet evidence does not support it; unsupported doubt becomes `contested` for Sol. Never vote. These refuters count toward Luna caps.
+For a non-empty merge packet involving externally trusted judgment, safety, or hard-to-reverse work, Root may spawn 2–3 Luna in one wave with the same stable `C-###` packet and distinct questions: citation support; freshness, snapshot, or missing payload; severity or category. Use `fork_turns=none`, packet payloads only, and no repository rescan. Drop a claim only when cited packet evidence does not support it; unsupported doubt becomes `contested` for Sol. Never vote. These refuters count toward coverage caps.
 
 ## Completeness critic
 
-Optional last step, not a fourth search wave. Ask “what class of risk or which owned files did nobody cover?” Return an evidence-backed numbered claim or `CLAIMS: none`. A supported missing-class claim lets Root replace the empty conclusion with a non-empty merge packet and apply the normal gate. Material unread in-scope evidence withdraws `completed-empty`, marks coverage incomplete, and makes the unread branch `UNKNOWN`; otherwise `CLAIMS: none` leaves `completed-empty` standing. The critic does not start another search wave. Skip when the job was a bounded factual list Root already substantiated.
+Optional last step, not a fourth search wave. Give the critic only the coverage packet, named in-scope source inventory, and `UNCOVERED`. Ask: “what class of risk or which owned files did nobody cover; which important modality is absent; which material claim remains unverified; and which in-scope source remains unread?” It may compare those inputs but does not rescan the repository, and returns `CLAIMS: none` only after checking every question. A supported missing-class claim lets Root replace the empty conclusion with a non-empty merge packet and apply the normal gate. Material unread in-scope evidence withdraws `completed-empty`, marks coverage incomplete, and makes the unread branch `UNKNOWN`; otherwise `CLAIMS: none` leaves `completed-empty` standing. The critic does not start another search wave. Skip when the job was a bounded factual list Root already substantiated.
+
+## Stable claims and `seen`
+
+Child numbering is local. After Root merges and deduplicates a segment, assign `C-001`, `C-002`, ... and keep each ID bound to one meaning, scope, and evidence provenance. Additional evidence may append to that claim. A semantic rewrite, merge, or split creates a new ID. Evidence status and Root disposition are separate fields; every stable ID ends as adopted, rejected with evidence, or `UNKNOWN`.
+
+Maintain a transcript-local `seen` set containing adopted, rejected, `UNKNOWN`, and `contested` claims. Compare the next wave against all four outcomes. A repeated claim with no materially new evidence is not new coverage and does not reset a dry-wave count.
 
 ## Loop until dry
 
 1. Run a wave of lens Lunas.
-2. Root dedupes by file + claim text.
+2. Root dedupes against stable claim meaning and the transcript-local `seen` set.
 3. Continue only with a **different** lens.
 4. Stop at the first of: a user-supplied positive integer `N` is reached by adopted, deduplicated claims; 2 consecutive waves produce no new unique claims; or the third search wave completes.
 5. A zero-claim wave counts as dry, not `completed-empty` by itself. The third wave closes the segment; changing lens does not reset the count, and a new segment must not exist merely to reset the cap.
@@ -70,12 +88,16 @@ Use only for a genuine choice when the user has not already selected a design. S
 
 ## Segment switch
 
-When those segments exist: Understand (lenses) → Design (Sol) → Implement (one writer, default Sol) → Review (fresh Lunas, optional Sol gate). New children each segment. Do not reuse a finder as the writer or as the reviewer of its own work. Review starts only after the writer is idle. If the user wants parallel writers, stop and require a separately selected worktree workflow; this pattern does not create worktrees.
+When those segments exist: Understand (lenses) → Design (Sol) → Implement (one writer by default) → Review (fresh coverage agents, optional Sol gate). New children each segment. Do not reuse a finder as the writer or as the reviewer of its own work. Review starts only after all writers are idle. When 2+ independent writers must run concurrently, use the applicable workspace worktree contract; under `D:\codex`, the single source of truth is `D:\codex\docs\agent-workflows\worktree-parallel-dispatch.md`. If no applicable contract exists, use one writer.
 
 ## Escalate forward only
 
-Default search Luna (Spark if mechanical) → optional packet refute panel → Sol gate. A branch may **start** as Sol when the question itself requires it. Never replay the same failed assignment to the same route; upgrade Luna → Sol → Root. If a direct Sol still fails after the permitted input/shape follow-up, Root decides from the existing failure packet or marks the branch `UNKNOWN`; never replay, down-route, or rescan. A later review of completed implementation is a new segment, not a down-route. If Root cannot form a bounded Sol packet, Root handles the branch or marks it `UNKNOWN`. Nested spawn is forbidden in every pattern.
+Default search Luna (Spark if the branch is short, mechanical, read-only, and easily checked) → optional packet refute panel → Sol gate. When Root selected Spark by default and it is unavailable or proves insufficient, transfer only the unfinished scope once to Luna in a remainder packet containing the original scope, completed claims and evidence, `UNCOVERED`, and the failure or capability limit; do not replay completed work. When the user fixed the Spark route, report the failure or capability limit and keep the route unchanged unless the user chooses another route. A branch may **start** as Sol when the question itself requires judgment, safety, or hard-to-reverse choices. Never replay the same failed assignment to the same route; upgrade Luna → Sol → Root. If a direct Sol still fails after the permitted input/shape follow-up, Root decides from the existing failure packet or marks the branch `UNKNOWN`; never replay, down-route, or rescan. A later review of completed implementation is a new segment, not a down-route. If Root cannot form a bounded Sol packet, Root handles the branch or marks it `UNKNOWN`. Nested spawn is forbidden in every pattern.
+
+## Waiting without replay
+
+After a child's first timeout, Root may send that child at most one non-interrupting progress question. A healthy child remains awaited. Silence does not authorize replay, reroute, or interruption. Root may advance unrelated work while waiting, but does not repeat the active child's scope, question, and method.
 
 ## Final accounting
 
-Before answering, classify every planned material branch as completed, `completed-empty`, failed, interrupted, dropped with a reason, or `UNKNOWN`. A pipeline may avoid an intermediate barrier, but it may not silently omit unfinished coverage.
+Before answering, classify every planned material branch as completed, `completed-empty`, failed, interrupted, dropped with a reason, or `UNKNOWN`, and give every stable `C-###` an adopted, evidence-backed rejected, or `UNKNOWN` disposition. Material `UNVERIFIED` or `contested` claims remain surviving until resolved and otherwise finish as `UNKNOWN`. A pipeline may avoid an intermediate barrier, but it may not silently omit unfinished coverage.

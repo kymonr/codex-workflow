@@ -1,6 +1,6 @@
 interface:
   display_name: "Native Dispatch"
-  short_description: "Native Luna coverage; Sol gates/design/writing; Spark/Custom"
-  default_prompt: "Use $dispatching-native-agents to fan out substantial independent branches with native subagents."
+  short_description: "Adaptive native dispatch and deep review"
+  default_prompt: "Use $dispatching-native-agents to run adaptive native-agent dispatch or a deep review with evidence-bound claims."
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true

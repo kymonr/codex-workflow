@@ -1,8 +1,16 @@
 # dispatching-native-agents
 
-给 **Codex 桌面会话**使用的原生子代理派工说明书。子代理必须使用原生 `spawn_agent`：默认由 Luna 做事实覆盖；Sol 负责判断门卫、设计选择、默认写入和难以逆转的工作，但保持稀缺；短小、机械、只读的任务可以使用 Spark；用户明确指定其他 model/effort 时使用 Custom（`agent_type=default`）。不是 `codex exec`、`python -m workflow`、CLI 或任何 JavaScript host。
+给 **Codex 桌面会话**使用的原生子代理派工与深度审核说明书。子代理必须使用原生 `spawn_agent`：短小、机械、只读且容易复核的分支优先 Spark；Luna 负责事实覆盖；Sol 负责判断门卫、设计选择、默认写入和难以逆转的工作，但保持稀缺；用户明确指定其他 model/effort 时使用 Custom（`agent_type=default`）。不是 `codex exec`、`python -m workflow`、CLI 或任何 JavaScript host。
 
 完整派工、Sol gate、生命周期和写入边界见 [SKILL.md](SKILL.md)；多波次模式见 [references/patterns.md](references/patterns.md)。
+
+## Routing summary
+
+- 通常按独立 evidence lens 派 2–8 个覆盖代理；更多有效 lens 分 wave，不为旧 `Agent Fleet 4/6/8` 凑人数。
+- 深度审核、全面审核、对抗审核、多代理审核、仓库深审和旧 Agent Fleet 说法都进入自适应深审。
+- Root 合并后使用稳定 `C-###`，并在 refute 或 Sol gate 前复核候选身份。
+- 已授权的实现任务存在两个以上互斥 writer 时，按适用工作区的现有 worktree 合同直接路由，不重复申请。`D:\codex` 的合同是 `D:\codex\docs\agent-workflows\worktree-parallel-dispatch.md`。
+- Managed Workflow、Worktree Writer v2、固定人数表、强制复现阶段和完整失败状态机不迁移。
 
 ## Source and installation
 
@@ -28,10 +36,10 @@ D:\codex\projects\codex-workflow\skill\dispatching-native-agents\
 
 源码与安装副本是独立目录，除非现场明确证明它们是链接。修改源码后需要重新同步并验证安装副本；不要根据用户名或历史路径猜测安装位置。
 
-完成发现后，在对话中显式调用：
+满足 description 时可自动选择本 Skill；需要明确指定时，在对话中显式调用：
 
 ```text
 $dispatching-native-agents
 ```
 
-`agents/openai.yaml` 默认关闭隐式触发，避免迁移期间与旧的 `dynamic-workflow` skill 抢占普通任务。隐式触发状态以该文件中的 `policy.allow_implicit_invocation` 为准。
+旧 `dynamic-workflow` 已从刷新后的运行时 catalog 消失，因此 `agents/openai.yaml` 使用 `policy.allow_implicit_invocation: true`。修改 invocation policy 后，需要在刷新或新开的任务中验证实际自动路由；静态文件和值不能代替运行时回执。
