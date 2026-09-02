@@ -20,7 +20,7 @@ Before the first evidence wave, Root records one snapshot identifier and:
 
 `as-of` refers to that snapshot, not merely a timestamp. Bind every item-local chain to the snapshot it examined. When a completed writer changes the candidate, record a new snapshot and start a new review segment.
 
-After coverage is terminal and Root has merged claims, recheck the scoped snapshot before any merge-wide refute panel or Sol gate, then recheck it once more immediately before the final answer. In-scope drift makes only affected claims stale or `UNKNOWN`; out-of-scope drift does not invalidate the packet. Do not reinterpret old evidence as proof about new bytes. Non-Git work skips Git fields but still names the source and in-scope identity that can be observed.
+After coverage is terminal and Root has merged claims, always recheck the scoped snapshot, including a pure-factual or `completed-empty` path. When a merge-wide refute panel or Sol gate follows, complete that recheck before dispatch. Recheck once more immediately before the final answer. In-scope drift makes only affected claims stale or `UNKNOWN`; out-of-scope drift does not invalidate the packet. Do not reinterpret old evidence as proof about new bytes. Non-Git work skips Git fields but still names the source and in-scope identity that can be observed.
 
 ## Pipeline without a join
 
@@ -63,7 +63,7 @@ Maintain a transcript-local `seen` set containing adopted, rejected, `UNKNOWN`, 
 
 ## Loop until dry
 
-1. Run a wave of lens Lunas.
+1. Run a wave of lens coverage agents (Spark or Luna).
 2. Root dedupes against stable claim meaning and the transcript-local `seen` set.
 3. Continue only with a **different** lens.
 4. Stop at the first of: a user-supplied positive integer `N` is reached by adopted, deduplicated claims; 2 consecutive waves produce no new unique claims; or the third search wave completes.

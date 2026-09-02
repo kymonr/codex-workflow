@@ -42,4 +42,4 @@ D:\codex\projects\codex-workflow\skill\dispatching-native-agents\
 $dispatching-native-agents
 ```
 
-旧 `dynamic-workflow` 已从刷新后的运行时 catalog 消失，因此 `agents/openai.yaml` 使用 `policy.allow_implicit_invocation: true`。修改 invocation policy 后，需要在刷新或新开的任务中验证实际自动路由；静态文件和值不能代替运行时回执。
+旧 `dynamic-workflow` 的安装目录已删除；运行时 catalog 及实际自动路由以刷新或新开的任务回执为准，静态文件和值不能代替运行时验证。`agents/openai.yaml` 保持 `policy.allow_implicit_invocation: true`。
